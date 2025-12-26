@@ -55,6 +55,13 @@ let aiCount = 5;
 let playerDamage = 0; // 0-100
 let damageDisplay;
 
+// Sistema de Pit Stop
+let pitStopZone = null;
+let isInPitStop = false;
+let pitStopTimer = 0;
+let pitStopDuration = 3; // 3 segundos
+let canEnterPit = true;
+
 // Elementos do DOM
 let mainMenu, hud, countdown, finishScreen, trackSelectScreen;
 let speedValue, positionValue, lapsValue, timerValue, trackNameDisplay;
@@ -145,6 +152,35 @@ const TRACKS = {
             { x: -85, z: 5 },
             { x: -55, z: -15 },
             { x: -25, z: -10 }
+        ]
+    },
+
+    // Spa-Francorchamps - Lendário circuito belga com Eau Rouge
+    spa: {
+        name: 'Spa-Francorchamps',
+        description: 'Eau Rouge • Lendário',
+        color: 0xff6600,
+        groundColor: 0x2d6b2d,
+        maxSpeed: 260,
+        width: 20,
+        points: [
+            { x: 0, z: 0 },          // La Source
+            { x: 30, z: -15 },
+            { x: 70, z: -25 },       // Eau Rouge início
+            { x: 100, z: -10 },      // Raidillon
+            { x: 140, z: 30 },       // Kemmel Straight
+            { x: 170, z: 80 },
+            { x: 160, z: 130 },      // Les Combes
+            { x: 120, z: 160 },
+            { x: 70, z: 175 },       // Rivage
+            { x: 20, z: 180 },
+            { x: -40, z: 170 },      // Pouhon
+            { x: -80, z: 140 },
+            { x: -100, z: 100 },     // Fagnes
+            { x: -95, z: 60 },
+            { x: -70, z: 30 },       // Blanchimont
+            { x: -40, z: 10 },
+            { x: -20, z: -5 }        // Bus Stop
         ]
     }
 };
@@ -1054,6 +1090,12 @@ function setupEvents() {
             case 'KeyD':
                 keys.right = true;
                 break;
+            case 'KeyP':
+                // Pit stop
+                if (canEnterPit && !isInPitStop && playerCar && playerCar.userData.damage > 10) {
+                    enterPitStop();
+                }
+                break;
         }
     });
 
@@ -1138,6 +1180,11 @@ function startGame() {
     bgMusic.volume = 0.3;
     bgMusic.play().catch(() => { });
 
+    // Inicializar som do motor
+    if (window.initEngineSound) {
+        window.initEngineSound();
+    }
+
     // Reset de estado
     playerSpeed = 0;
     playerCurrentLap = 1;
@@ -1145,10 +1192,16 @@ function startGame() {
     playerPosition = 1;
     raceTime = 0;
 
+    // Reset pit stop
+    isInPitStop = false;
+    pitStopTimer = 0;
+    canEnterPit = true;
+
     // Posicionar jogador na largada
     playerCar.position.set(0, 0.5, 0);
     playerCar.rotation.set(0, 0, 0);
     playerCar.userData.finished = false;
+    playerCar.userData.damage = 0;
 
     // Contagem regressiva
     gameState = 'countdown';
@@ -1215,11 +1268,111 @@ function restartGame() {
 }
 
 // ============================================
+// SISTEMA DE PIT STOP
+// ============================================
+
+function enterPitStop() {
+    if (isInPitStop) return;
+
+    isInPitStop = true;
+    pitStopTimer = 0;
+    canEnterPit = false;
+
+    // Parar o carro
+    playerSpeed = 0;
+
+    // Mostrar indicador
+    const indicator = document.getElementById('pitStopIndicator');
+    const pitHint = document.getElementById('pitHint');
+    if (indicator) indicator.style.display = 'block';
+    if (pitHint) pitHint.style.display = 'none';
+
+    // Parar som do motor
+    if (window.stopEngineSound) {
+        window.stopEngineSound();
+    }
+}
+
+function updatePitStop(delta) {
+    pitStopTimer += delta;
+
+    const progress = (pitStopTimer / pitStopDuration) * 100;
+    const progressBar = document.getElementById('pitStopProgress');
+    const progressText = document.getElementById('pitStopText');
+
+    if (progressBar) {
+        progressBar.style.width = `${Math.min(progress, 100)}%`;
+    }
+
+    if (progressText) {
+        const remaining = Math.max(0, pitStopDuration - pitStopTimer).toFixed(1);
+        progressText.textContent = `Reparando... ${remaining}s`;
+    }
+
+    // Reparar dano gradualmente
+    if (playerCar.userData.damage > 0) {
+        playerCar.userData.damage = Math.max(0, playerCar.userData.damage - (100 / pitStopDuration) * delta);
+
+        // Restaurar peças visuais do carro
+        if (playerCar.userData.damageParts) {
+            playerCar.userData.damageParts.forEach(part => {
+                // Restaurar posição original gradualmente
+                part.position.x *= 0.95;
+                part.position.y = Math.abs(part.position.y) < 0.5 ? part.position.y * 0.95 : part.position.y;
+                part.rotation.x *= 0.9;
+                part.rotation.z *= 0.9;
+            });
+        }
+    }
+
+    // Pit stop concluído
+    if (pitStopTimer >= pitStopDuration) {
+        exitPitStop();
+    }
+}
+
+function exitPitStop() {
+    isInPitStop = false;
+    pitStopTimer = 0;
+
+    // Resetar dano completamente
+    playerCar.userData.damage = 0;
+
+    // Esconder indicador
+    const indicator = document.getElementById('pitStopIndicator');
+    const progressBar = document.getElementById('pitStopProgress');
+    if (indicator) indicator.style.display = 'none';
+    if (progressBar) progressBar.style.width = '0%';
+
+    // Cooldown antes de poder fazer outro pit
+    setTimeout(() => {
+        canEnterPit = true;
+    }, 10000); // 10 segundos de cooldown
+}
+
+// ============================================
 // ATUALIZAÇÕES DO JOGO
 // ============================================
 
 function updatePlayer(delta) {
     if (gameState !== 'racing' || playerCar.userData.finished) return;
+
+    // Atualizar pit stop
+    if (isInPitStop) {
+        updatePitStop(delta);
+        return;
+    }
+
+    // Mostrar dica de pit se dano > 30%
+    const pitHint = document.getElementById('pitHint');
+    if (pitHint) {
+        pitHint.style.display = playerCar.userData.damage > 30 ? 'block' : 'none';
+    }
+
+    // Atualizar som do motor
+    if (window.updateEngineSound) {
+        window.updateEngineSound(playerSpeed, playerMaxSpeed);
+    }
 
     // Aceleração e frenagem
     if (keys.forward) {
