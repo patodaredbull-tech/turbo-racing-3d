@@ -501,6 +501,11 @@ function createCurbSegment(inner1, inner2, outer1, outer2, side, material) {
 }
 
 function createFinishLine() {
+    // Posicionar na pista real
+    const startPoint = trackPath.getPointAt(0);
+    const tangent = trackPath.getTangentAt(0);
+    const angle = Math.atan2(tangent.x, tangent.z);
+
     const finishGeo = new THREE.PlaneGeometry(trackWidth, 4);
     const finishMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
@@ -508,7 +513,9 @@ function createFinishLine() {
     });
     const finish = new THREE.Mesh(finishGeo, finishMat);
     finish.rotation.x = -Math.PI / 2;
-    finish.position.set(0, 0.02, 0);
+    finish.rotation.z = -angle;
+    finish.position.copy(startPoint);
+    finish.position.y = 0.02;
     scene.add(finish);
     trackObjects.push(finish);
 
@@ -517,12 +524,24 @@ function createFinishLine() {
     const checkerGeo = new THREE.PlaneGeometry(checkerSize, 0.8);
     const blackMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
+    const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
     for (let i = 0; i < 10; i++) {
         for (let j = 0; j < 5; j++) {
             if ((i + j) % 2 === 0) {
                 const checker = new THREE.Mesh(checkerGeo, blackMat);
                 checker.rotation.x = -Math.PI / 2;
-                checker.position.set(-trackWidth / 2 + (i + 0.5) * checkerSize, 0.025, -1.6 + j * 0.8);
+                checker.rotation.z = -angle;
+
+                // Posicionar relativo ao startPoint
+                const offsetX = (-trackWidth / 2 + (i + 0.5) * checkerSize);
+                const offsetZ = (-1.6 + j * 0.8);
+
+                checker.position.copy(startPoint);
+                checker.position.add(normal.clone().multiplyScalar(offsetX));
+                checker.position.add(tangent.clone().multiplyScalar(offsetZ));
+                checker.position.y = 0.025;
+
                 scene.add(checker);
                 trackObjects.push(checker);
             }
@@ -742,16 +761,27 @@ function createTree(x, z) {
 }
 
 function createPitBuildings(accentColor) {
-    // Posição do pit lane (paralelo à linha de chegada)
-    const pitLaneZ = -18;
-    const pitLaneLength = 80;
+    // Obter posição e direção do início da pista
+    const startPoint = trackPath.getPointAt(0);
+    const tangent = trackPath.getTangentAt(0);
+    const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const angle = Math.atan2(tangent.x, tangent.z);
+
+    // Offset do pit lane (para fora da pista)
+    const pitOffset = trackWidth / 2 + 15;
+    const pitLaneLength = 60;
+
+    // Posição base do pit
+    const pitBase = startPoint.clone().add(normal.clone().multiplyScalar(-pitOffset));
 
     // Pit Lane (faixa de asfalto paralela)
     const pitLaneGeo = new THREE.PlaneGeometry(pitLaneLength, 8);
     const pitLaneMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
     const pitLane = new THREE.Mesh(pitLaneGeo, pitLaneMat);
     pitLane.rotation.x = -Math.PI / 2;
-    pitLane.position.set(0, 0.01, pitLaneZ);
+    pitLane.rotation.z = -angle;
+    pitLane.position.copy(pitBase);
+    pitLane.position.y = 0.01;
     scene.add(pitLane);
     trackObjects.push(pitLane);
 
@@ -760,108 +790,83 @@ function createPitBuildings(accentColor) {
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const speedLine = new THREE.Mesh(lineGeo, lineMat);
     speedLine.rotation.x = -Math.PI / 2;
-    speedLine.position.set(0, 0.02, pitLaneZ - 3.5);
+    speedLine.rotation.z = -angle;
+    speedLine.position.copy(pitBase).add(normal.clone().multiplyScalar(-4));
+    speedLine.position.y = 0.02;
     scene.add(speedLine);
     trackObjects.push(speedLine);
 
-    // Entrada do pit (zona amarela)
-    const entryGeo = new THREE.PlaneGeometry(15, 10);
+    // Entrada do pit (zona amarela) - antes da linha de chegada
+    pitLaneEntry = pitBase.clone().add(tangent.clone().multiplyScalar(-25));
+    pitLaneEntry.add(normal.clone().multiplyScalar(5));
+
+    const entryGeo = new THREE.PlaneGeometry(15, 12);
     const entryMat = new THREE.MeshLambertMaterial({ color: 0xffcc00, transparent: true, opacity: 0.5 });
     const entryZone = new THREE.Mesh(entryGeo, entryMat);
     entryZone.rotation.x = -Math.PI / 2;
-    entryZone.position.set(-35, 0.015, pitLaneZ + 5);
+    entryZone.rotation.z = -angle;
+    entryZone.position.copy(pitLaneEntry);
+    entryZone.position.y = 0.015;
     scene.add(entryZone);
     trackObjects.push(entryZone);
 
-    // Guardar posição de entrada
-    pitLaneEntry = new THREE.Vector3(-35, 0, pitLaneZ + 5);
-
-    // Saída do pit (zona verde)
-    const exitGeo = new THREE.PlaneGeometry(15, 10);
-    const exitMat = new THREE.MeshLambertMaterial({ color: 0x44ff44, transparent: true, opacity: 0.5 });
-    const exitZone = new THREE.Mesh(exitGeo, exitMat);
-    exitZone.rotation.x = -Math.PI / 2;
-    exitZone.position.set(35, 0.015, pitLaneZ + 5);
-    scene.add(exitZone);
-    trackObjects.push(exitZone);
-
-    // Guardar posição de saída
-    pitLaneExit = new THREE.Vector3(35, 0, pitLaneZ + 5);
-
-    // Box position (onde para para pit stop)
-    pitBoxPosition = new THREE.Vector3(0, 0, pitLaneZ);
+    // Box position (onde para para pit stop) - centro do pit
+    pitBoxPosition = pitBase.clone();
 
     // Marca do box do jogador (vermelho)
-    const boxMarkGeo = new THREE.PlaneGeometry(6, 6);
+    const boxMarkGeo = new THREE.PlaneGeometry(8, 8);
     const boxMarkMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 });
     const boxMark = new THREE.Mesh(boxMarkGeo, boxMarkMat);
     boxMark.rotation.x = -Math.PI / 2;
-    boxMark.position.set(0, 0.02, pitLaneZ);
+    boxMark.rotation.z = -angle;
+    boxMark.position.copy(pitBoxPosition);
+    boxMark.position.y = 0.02;
     scene.add(boxMark);
     trackObjects.push(boxMark);
 
-    // Prédio principal dos boxes
-    const pitGeo = new THREE.BoxGeometry(70, 8, 12);
+    // Saída do pit (zona verde) - depois da linha de chegada
+    pitLaneExit = pitBase.clone().add(tangent.clone().multiplyScalar(25));
+    pitLaneExit.add(normal.clone().multiplyScalar(5));
+
+    const exitGeo = new THREE.PlaneGeometry(15, 12);
+    const exitMat = new THREE.MeshLambertMaterial({ color: 0x44ff44, transparent: true, opacity: 0.5 });
+    const exitZone = new THREE.Mesh(exitGeo, exitMat);
+    exitZone.rotation.x = -Math.PI / 2;
+    exitZone.rotation.z = -angle;
+    exitZone.position.copy(pitLaneExit);
+    exitZone.position.y = 0.015;
+    scene.add(exitZone);
+    trackObjects.push(exitZone);
+
+    // Prédio dos boxes
+    const pitGeo = new THREE.BoxGeometry(60, 8, 10);
     const pitMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const pit = new THREE.Mesh(pitGeo, pitMat);
-    pit.position.set(0, 4, pitLaneZ - 10);
+    pit.position.copy(pitBase).add(normal.clone().multiplyScalar(-12));
+    pit.position.y = 4;
+    pit.rotation.y = angle;
     scene.add(pit);
     trackObjects.push(pit);
 
     // Teto
-    const roofGeo = new THREE.BoxGeometry(75, 1, 18);
+    const roofGeo = new THREE.BoxGeometry(65, 1, 16);
     const roofMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.set(0, 9, pitLaneZ - 8);
+    roof.position.copy(pitBase).add(normal.clone().multiplyScalar(-10));
+    roof.position.y = 9;
+    roof.rotation.y = angle;
     scene.add(roof);
     trackObjects.push(roof);
 
-    // Faixa colorida do time
-    const stripeGeo = new THREE.BoxGeometry(70, 1, 12.1);
+    // Faixa colorida
+    const stripeGeo = new THREE.BoxGeometry(60, 1, 10.1);
     const stripeMat = new THREE.MeshLambertMaterial({ color: accentColor });
     const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-    stripe.position.set(0, 7, pitLaneZ - 10);
+    stripe.position.copy(pitBase).add(normal.clone().multiplyScalar(-12));
+    stripe.position.y = 7;
+    stripe.rotation.y = angle;
     scene.add(stripe);
     trackObjects.push(stripe);
-
-    // Garagens individuais
-    for (let i = -30; i <= 30; i += 10) {
-        const garageGeo = new THREE.BoxGeometry(8, 5, 0.5);
-        const garageMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-        const garage = new THREE.Mesh(garageGeo, garageMat);
-        garage.position.set(i, 2.5, pitLaneZ - 4);
-        scene.add(garage);
-        trackObjects.push(garage);
-
-        // Número da garagem
-        if (i === 0) {
-            // Garagem do jogador tem cor especial
-            const playerGarageGeo = new THREE.BoxGeometry(8.2, 5.2, 0.4);
-            const playerGarageMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-            const playerGarage = new THREE.Mesh(playerGarageGeo, playerGarageMat);
-            playerGarage.position.set(i, 2.5, pitLaneZ - 3.8);
-            scene.add(playerGarage);
-            trackObjects.push(playerGarage);
-        }
-    }
-
-    // Equipamento de pit stop (simulado)
-    const equipGeo = new THREE.BoxGeometry(1, 1.5, 1);
-    const equipMat = new THREE.MeshLambertMaterial({ color: 0xff6600 });
-    [-2, 2].forEach(x => {
-        const equip = new THREE.Mesh(equipGeo, equipMat);
-        equip.position.set(x, 0.75, pitLaneZ - 2);
-        scene.add(equip);
-        trackObjects.push(equip);
-    });
-
-    // Sinal de PIT
-    const signGeo = new THREE.BoxGeometry(12, 3, 0.5);
-    const signMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
-    const sign = new THREE.Mesh(signGeo, signMat);
-    sign.position.set(-35, 5, pitLaneZ);
-    scene.add(sign);
-    trackObjects.push(sign);
 }
 
 // ============================================
@@ -1311,11 +1316,17 @@ function startGame() {
     isInPitStop = false;
     pitStopTimer = 0;
 
-    // Posicionar jogador na largada
-    playerCar.position.set(0, 0.5, 0);
-    playerCar.rotation.set(0, 0, 0);
+    // Posicionar jogador na largada (no início da pista)
+    const startPoint = trackPath.getPointAt(0);
+    const tangent = trackPath.getTangentAt(0);
+    const startAngle = Math.atan2(tangent.x, tangent.z);
+
+    playerCar.position.copy(startPoint);
+    playerCar.position.y = 0.5;
+    playerCar.rotation.set(0, startAngle, 0);
     playerCar.userData.finished = false;
     playerCar.userData.damage = 0;
+    playerCar.userData.trackProgress = 0;
 
     // Contagem regressiva
     gameState = 'countdown';
@@ -1344,15 +1355,27 @@ function startGame() {
 }
 
 function restartGame() {
-    // Reset jogador
-    playerCar.position.set(0, 0.5, 0);
-    playerCar.rotation.set(0, 0, 0);
+    // Reset jogador - posicionar na pista
+    const startPoint = trackPath.getPointAt(0);
+    const tangent = trackPath.getTangentAt(0);
+    const startAngle = Math.atan2(tangent.x, tangent.z);
+
+    playerCar.position.copy(startPoint);
+    playerCar.position.y = 0.5;
+    playerCar.rotation.set(0, startAngle, 0);
     playerSpeed = 0;
     playerCurrentLap = 1;
     playerCheckpoint = 0;
     playerPosition = 1;
     playerCar.userData.finished = false;
+    playerCar.userData.damage = 0;
+    playerCar.userData.trackProgress = 0;
     raceTime = 0;
+
+    // Reset pit stop
+    isInPitLane = false;
+    isInPitStop = false;
+    pitStopTimer = 0;
 
     // Reset IA
     aiCars.forEach((car, i) => {
