@@ -521,6 +521,16 @@
                     <span class="track-stat">🔄 Misto</span>
                 </div>
             </div>
+
+            <div class="track-option spa" data-track="spa" style="--track-color: #ff6600;">
+                <div class="track-icon" style="background: linear-gradient(135deg, #ff6600, #ff9933);">🏔️</div>
+                <div class="track-name">Spa-Francorchamps</div>
+                <div class="track-desc">Eau Rouge • Lendário</div>
+                <div class="track-stats">
+                    <span class="track-stat">🏎️ 260 km/h</span>
+                    <span class="track-stat">🔄 Épico</span>
+                </div>
+            </div>
         </div>
 
         <button id="backToMenu">← Voltar ao Menu</button>
@@ -559,6 +569,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Indicador de Pit Stop -->
+        <div id="pitStopIndicator" class="hud-element"
+            style="bottom: 10rem; right: 2rem; min-width: 150px; display: none;">
+            <div style="font-size: 0.8rem; color: #4ecdc4; text-transform: uppercase; font-weight: bold;">🔧 PIT STOP
+            </div>
+            <div style="background: #333; border-radius: 5px; height: 8px; overflow: hidden; margin-top: 0.3rem;">
+                <div id="pitStopProgress" style="height: 100%; width: 0%; background: #4ecdc4; transition: width 0.1s;">
+                </div>
+            </div>
+            <div id="pitStopText" style="font-size: 0.7rem; color: #888; margin-top: 0.3rem;">Reparando...</div>
+        </div>
+
+        <!-- Dica de Pit -->
+        <div id="pitHint" class="hud-element"
+            style="bottom: 2rem; left: 50%; transform: translateX(-50%); display: none;">
+            <div style="font-size: 0.9rem; color: #ffcc00;">Pressione <span
+                    style="background: #444; padding: 2px 8px; border-radius: 3px;">P</span> para Pit Stop</div>
+        </div>
     </div>
 
     <!-- Contagem Regressiva -->
@@ -584,6 +613,66 @@
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js"></script>
+
+    <!-- Som do Motor F1 -->
+    <script>
+        // Sistema de som de motor F1 usando Web Audio API
+        let audioContext = null;
+        let engineOscillator = null;
+        let engineGain = null;
+        let engineStarted = false;
+
+        function initEngineSound() {
+            if (audioContext) return;
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Oscilador principal (frequência base do motor)
+            engineOscillator = audioContext.createOscillator();
+            engineOscillator.type = 'sawtooth';
+            engineOscillator.frequency.value = 80;
+
+            // Ganho para controle de volume
+            engineGain = audioContext.createGain();
+            engineGain.gain.value = 0;
+
+            // Filtro para som mais realista
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+
+            // Conectar
+            engineOscillator.connect(filter);
+            filter.connect(engineGain);
+            engineGain.connect(audioContext.destination);
+
+            engineOscillator.start();
+            engineStarted = true;
+        }
+
+        function updateEngineSound(speed, maxSpeed) {
+            if (!engineStarted || !engineOscillator) return;
+
+            // Frequência baseada na velocidade (80-400 Hz)
+            const speedRatio = Math.abs(speed) / maxSpeed;
+            const frequency = 80 + speedRatio * 320;
+            engineOscillator.frequency.setTargetAtTime(frequency, audioContext.currentTime, 0.1);
+
+            // Volume baseado na velocidade
+            const volume = Math.min(0.15, speedRatio * 0.2);
+            engineGain.gain.setTargetAtTime(volume, audioContext.currentTime, 0.1);
+        }
+
+        function stopEngineSound() {
+            if (engineGain) {
+                engineGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+            }
+        }
+
+        // Expor funções globalmente
+        window.initEngineSound = initEngineSound;
+        window.updateEngineSound = updateEngineSound;
+        window.stopEngineSound = stopEngineSound;
+    </script>
 </body>
 
 </html>
