@@ -72,115 +72,145 @@ let bgMusic;
 // ============================================
 
 const TRACKS = {
-    // Monaco - Curvas apertadas, técnico, lento
+    // Monaco - Circuito de rua, sentido horário, muitas curvas apertadas
+    // Baseado na imagem: formato de "gancho" descendo à direita
     monaco: {
         name: 'Monaco',
         description: 'Curvas apertadas • Técnico',
         color: 0xe94560,
         groundColor: 0x2a5c3a,
         maxSpeed: 180,
-        width: 15,
+        width: 14,
         points: [
-            { x: 0, z: 0 },
-            { x: 20, z: -10 },
-            { x: 50, z: -15 },
-            { x: 70, z: 0 },
-            { x: 85, z: 30 },
-            { x: 75, z: 60 },
-            { x: 50, z: 75 },
-            { x: 30, z: 65 },
-            { x: 15, z: 80 },
-            { x: -10, z: 100 },
-            { x: -35, z: 95 },
-            { x: -55, z: 70 },
-            { x: -70, z: 40 },
-            { x: -65, z: 10 },
-            { x: -45, z: -10 },
-            { x: -20, z: -5 }
+            { x: 0, z: 0 },           // Linha de largada
+            { x: 25, z: 5 },          // Sainte Devote
+            { x: 50, z: 25 },         // Subida Beau Rivage
+            { x: 55, z: 50 },
+            { x: 45, z: 70 },         // Massenet
+            { x: 25, z: 80 },         // Casino
+            { x: 5, z: 85 },
+            { x: -15, z: 75 },        // Mirabeau
+            { x: -25, z: 55 },        // Hairpin Grand Hotel
+            { x: -20, z: 35 },
+            { x: -5, z: 20 },         // Portier
+            { x: 15, z: 10 },         // Túnel
+            { x: 35, z: -10 },
+            { x: 55, z: -25 },        // Chicane
+            { x: 60, z: -45 },
+            { x: 45, z: -60 },        // Tabac
+            { x: 20, z: -65 },
+            { x: -5, z: -55 },        // Piscina
+            { x: -25, z: -40 },
+            { x: -35, z: -20 },       // La Rascasse
+            { x: -25, z: -5 }         // Anthony Noghes
         ]
     },
 
-    // Monza - Alta velocidade, longas retas
+    // Monza - Formato triangular com chicanes, sentido horário
+    // Baseado na imagem: triângulo com retas longas
     monza: {
         name: 'Monza',
         description: 'Alta velocidade • Retas longas',
         color: 0x4ecdc4,
         groundColor: 0x3d8c40,
         maxSpeed: 250,
-        width: 22,
+        width: 20,
         points: [
-            { x: 0, z: 0 },
-            { x: 60, z: 0 },
-            { x: 120, z: 5 },
-            { x: 150, z: 25 },
-            { x: 160, z: 60 },
-            { x: 150, z: 100 },
-            { x: 120, z: 130 },
-            { x: 60, z: 150 },
-            { x: 0, z: 155 },
-            { x: -50, z: 145 },
-            { x: -80, z: 120 },
-            { x: -90, z: 80 },
-            { x: -85, z: 40 },
-            { x: -60, z: 15 },
-            { x: -30, z: 5 }
+            { x: 0, z: 0 },           // Linha de largada
+            { x: 40, z: -5 },         // Reta principal
+            { x: 80, z: -15 },
+            { x: 100, z: -30 },       // Variante del Rettifilo (chicane 1)
+            { x: 105, z: -50 },
+            { x: 95, z: -70 },
+            { x: 110, z: -100 },      // Curva Grande
+            { x: 130, z: -130 },
+            { x: 140, z: -160 },      // Variante della Roggia (chicane 2)
+            { x: 130, z: -180 },
+            { x: 100, z: -190 },      // Lesmo 1
+            { x: 70, z: -185 },       // Lesmo 2
+            { x: 40, z: -170 },
+            { x: 10, z: -150 },       // Serraglio
+            { x: -20, z: -120 },
+            { x: -40, z: -90 },       // Ascari
+            { x: -50, z: -60 },
+            { x: -45, z: -30 },       // Parabolica
+            { x: -30, z: -10 },
+            { x: -15, z: 0 }
         ]
     },
 
-    // Interlagos - Misto, subidas e descidas (simuladas com curvas)
+    // Interlagos - Formato de "A" inclinado, sentido anti-horário
+    // Baseado na imagem: circuito compacto com "S" do Senna
     interlagos: {
         name: 'Interlagos',
         description: 'Circuito misto • Desafiador',
         color: 0xffd700,
         groundColor: 0x4a7c3a,
         maxSpeed: 210,
-        width: 18,
+        width: 16,
         points: [
-            { x: 0, z: 0 },
-            { x: 40, z: -20 },
-            { x: 80, z: -30 },
-            { x: 110, z: -15 },
-            { x: 130, z: 20 },
-            { x: 125, z: 55 },
-            { x: 100, z: 80 },
-            { x: 60, z: 95 },
-            { x: 20, z: 100 },
-            { x: -20, z: 110 },
-            { x: -55, z: 100 },
-            { x: -80, z: 75 },
-            { x: -95, z: 40 },
-            { x: -85, z: 5 },
-            { x: -55, z: -15 },
-            { x: -25, z: -10 }
+            { x: 0, z: 0 },           // Linha de largada
+            { x: -30, z: 10 },        // Curva 1 (Senna S)
+            { x: -50, z: 25 },
+            { x: -65, z: 45 },        // Curva do Sol
+            { x: -55, z: 70 },
+            { x: -35, z: 90 },        // Reta Oposta
+            { x: -10, z: 100 },
+            { x: 25, z: 105 },
+            { x: 55, z: 95 },         // Descida do Lago
+            { x: 75, z: 75 },
+            { x: 85, z: 50 },         // Ferradura
+            { x: 80, z: 25 },
+            { x: 65, z: 10 },         // Laranjinha
+            { x: 45, z: -5 },
+            { x: 30, z: -20 },        // Pinheirinho
+            { x: 20, z: -35 },
+            { x: 25, z: -50 },        // Bico de Pato
+            { x: 40, z: -55 },
+            { x: 55, z: -45 },        // Mergulho
+            { x: 60, z: -25 },
+            { x: 50, z: -10 },        // Junção
+            { x: 30, z: -5 }
         ]
     },
 
-    // Spa-Francorchamps - Lendário circuito belga com Eau Rouge
+    // Spa-Francorchamps - Circuito longo com Eau Rouge
+    // Baseado na imagem: formato irregular com muitas curvas
     spa: {
         name: 'Spa-Francorchamps',
         description: 'Eau Rouge • Lendário',
         color: 0xff6600,
         groundColor: 0x2d6b2d,
         maxSpeed: 260,
-        width: 20,
+        width: 18,
         points: [
-            { x: 0, z: 0 },          // La Source
-            { x: 30, z: -15 },
-            { x: 70, z: -25 },       // Eau Rouge início
-            { x: 100, z: -10 },      // Raidillon
-            { x: 140, z: 30 },       // Kemmel Straight
-            { x: 170, z: 80 },
-            { x: 160, z: 130 },      // Les Combes
-            { x: 120, z: 160 },
-            { x: 70, z: 175 },       // Rivage
-            { x: 20, z: 180 },
-            { x: -40, z: 170 },      // Pouhon
-            { x: -80, z: 140 },
-            { x: -100, z: 100 },     // Fagnes
-            { x: -95, z: 60 },
-            { x: -70, z: 30 },       // Blanchimont
-            { x: -40, z: 10 },
-            { x: -20, z: -5 }        // Bus Stop
+            { x: 0, z: 0 },           // La Source (hairpin)
+            { x: 20, z: -20 },        // Descida para Eau Rouge
+            { x: 35, z: -50 },        // Eau Rouge (vale)
+            { x: 50, z: -80 },        // Raidillon (subida íngreme)
+            { x: 80, z: -110 },       // Kemmel Straight
+            { x: 120, z: -130 },
+            { x: 150, z: -135 },      // Les Combes
+            { x: 170, z: -120 },
+            { x: 175, z: -95 },       // Malmedy
+            { x: 165, z: -70 },
+            { x: 145, z: -50 },       // Rivage
+            { x: 120, z: -40 },
+            { x: 95, z: -25 },        // Pouhon (dupla esquerda)
+            { x: 70, z: -5 },
+            { x: 50, z: 20 },         // Fagnes
+            { x: 35, z: 50 },
+            { x: 30, z: 80 },         // Stavelot
+            { x: 40, z: 105 },
+            { x: 60, z: 120 },        // Paul Frère
+            { x: 85, z: 125 },
+            { x: 105, z: 115 },       // Blanchimont (alta velocidade)
+            { x: 115, z: 95 },
+            { x: 110, z: 70 },
+            { x: 90, z: 50 },         // Bus Stop chicane
+            { x: 65, z: 40 },
+            { x: 40, z: 30 },
+            { x: 20, z: 15 }          // Volta para La Source
         ]
     }
 };
