@@ -1043,10 +1043,13 @@ function createAICars() {
 
         car.position.copy(startPoint);
         car.position.y = 0.5;
-        car.position.x += (i % 2 === 0 ? -4 : 4);
 
-        // Orientar na direção da pista (adicionar PI para direção correta)
-        const angle = Math.atan2(tangent.x, tangent.z) + Math.PI;
+        // Posicionar alternando lados da pista usando o normal
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        car.position.add(normal.multiplyScalar(i % 2 === 0 ? -4 : 4));
+
+        // Orientar na direção da pista
+        const angle = Math.atan2(tangent.x, tangent.z);
         car.rotation.y = angle;
 
         car.userData.trackT = startT;
@@ -1319,8 +1322,7 @@ function startGame() {
     // Posicionar jogador na largada (no início da pista)
     const startPoint = trackPath.getPointAt(0);
     const tangent = trackPath.getTangentAt(0);
-    // Adicionar PI para virar na direção correta da pista
-    const startAngle = Math.atan2(tangent.x, tangent.z) + Math.PI;
+    const startAngle = Math.atan2(tangent.x, tangent.z);
 
     playerCar.position.copy(startPoint);
     playerCar.position.y = 0.5;
@@ -1359,7 +1361,7 @@ function restartGame() {
     // Reset jogador - posicionar na pista
     const startPoint = trackPath.getPointAt(0);
     const tangent = trackPath.getTangentAt(0);
-    const startAngle = Math.atan2(tangent.x, tangent.z) + Math.PI;
+    const startAngle = Math.atan2(tangent.x, tangent.z);
 
     playerCar.position.copy(startPoint);
     playerCar.position.y = 0.5;
@@ -1386,9 +1388,11 @@ function restartGame() {
 
         car.position.copy(startPoint);
         car.position.y = 0.5;
-        car.position.x += (i % 2 === 0 ? -4 : 4);
 
-        const angle = Math.atan2(tangent.x, tangent.z) + Math.PI;
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        car.position.add(normal.multiplyScalar(i % 2 === 0 ? -4 : 4));
+
+        const angle = Math.atan2(tangent.x, tangent.z);
         car.rotation.y = angle;
 
         car.userData.trackT = startT;
@@ -1428,8 +1432,8 @@ function checkPitLane() {
         pitHint.style.display = 'none';
     }
 
-    // Entrar na pit lane
-    if (distToEntry < 8 && !isInPitLane && playerCar.position.z < -10) {
+    // Entrar na pit lane (apenas se estiver desacelerando e perto da entrada)
+    if (distToEntry < 10 && !isInPitLane && playerSpeed < 120) {
         enterPitLane();
     }
 
@@ -1450,7 +1454,7 @@ function checkPitLane() {
 
         // Verificar se saiu pela saída
         const distToExit = playerPos.distanceTo(pitLaneExit);
-        if (distToExit < 8 && playerPos.z > -15) {
+        if (distToExit < 10) {
             exitPitLane();
         }
     }
