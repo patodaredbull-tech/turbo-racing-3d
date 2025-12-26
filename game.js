@@ -1045,8 +1045,8 @@ function createAICars() {
         car.position.y = 0.5;
         car.position.x += (i % 2 === 0 ? -4 : 4);
 
-        // Orientar na direção da pista
-        const angle = Math.atan2(tangent.x, tangent.z);
+        // Orientar na direção da pista (adicionar PI para direção correta)
+        const angle = Math.atan2(tangent.x, tangent.z) + Math.PI;
         car.rotation.y = angle;
 
         car.userData.trackT = startT;
@@ -1319,7 +1319,8 @@ function startGame() {
     // Posicionar jogador na largada (no início da pista)
     const startPoint = trackPath.getPointAt(0);
     const tangent = trackPath.getTangentAt(0);
-    const startAngle = Math.atan2(tangent.x, tangent.z);
+    // Adicionar PI para virar na direção correta da pista
+    const startAngle = Math.atan2(tangent.x, tangent.z) + Math.PI;
 
     playerCar.position.copy(startPoint);
     playerCar.position.y = 0.5;
@@ -1358,7 +1359,7 @@ function restartGame() {
     // Reset jogador - posicionar na pista
     const startPoint = trackPath.getPointAt(0);
     const tangent = trackPath.getTangentAt(0);
-    const startAngle = Math.atan2(tangent.x, tangent.z);
+    const startAngle = Math.atan2(tangent.x, tangent.z) + Math.PI;
 
     playerCar.position.copy(startPoint);
     playerCar.position.y = 0.5;
@@ -1387,7 +1388,7 @@ function restartGame() {
         car.position.y = 0.5;
         car.position.x += (i % 2 === 0 ? -4 : 4);
 
-        const angle = Math.atan2(tangent.x, tangent.z);
+        const angle = Math.atan2(tangent.x, tangent.z) + Math.PI;
         car.rotation.y = angle;
 
         car.userData.trackT = startT;
