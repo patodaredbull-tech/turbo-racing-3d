@@ -55,12 +55,15 @@ let aiCount = 5;
 let playerDamage = 0; // 0-100
 let damageDisplay;
 
-// Sistema de Pit Stop
-let pitStopZone = null;
-let isInPitStop = false;
+// Sistema de Pit Stop Físico
+let pitLaneEntry = null;      // Posição da entrada do pit
+let pitLaneExit = null;       // Posição da saída do pit
+let pitBoxPosition = null;    // Posição do box
+let isInPitLane = false;      // Está na pit lane
+let isInPitStop = false;      // Está fazendo pit stop
 let pitStopTimer = 0;
-let pitStopDuration = 3; // 3 segundos
-let canEnterPit = true;
+let pitStopDuration = 3;      // 3 segundos de reparo
+let pitLaneSpeedLimit = 60;   // Limite de velocidade no pit
 
 // Elementos do DOM
 let mainMenu, hud, countdown, finishScreen, trackSelectScreen;
@@ -739,39 +742,126 @@ function createTree(x, z) {
 }
 
 function createPitBuildings(accentColor) {
+    // Posição do pit lane (paralelo à linha de chegada)
+    const pitLaneZ = -18;
+    const pitLaneLength = 80;
+
+    // Pit Lane (faixa de asfalto paralela)
+    const pitLaneGeo = new THREE.PlaneGeometry(pitLaneLength, 8);
+    const pitLaneMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+    const pitLane = new THREE.Mesh(pitLaneGeo, pitLaneMat);
+    pitLane.rotation.x = -Math.PI / 2;
+    pitLane.position.set(0, 0.01, pitLaneZ);
+    scene.add(pitLane);
+    trackObjects.push(pitLane);
+
+    // Linha branca de limite de velocidade
+    const lineGeo = new THREE.PlaneGeometry(pitLaneLength, 0.3);
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const speedLine = new THREE.Mesh(lineGeo, lineMat);
+    speedLine.rotation.x = -Math.PI / 2;
+    speedLine.position.set(0, 0.02, pitLaneZ - 3.5);
+    scene.add(speedLine);
+    trackObjects.push(speedLine);
+
+    // Entrada do pit (zona amarela)
+    const entryGeo = new THREE.PlaneGeometry(15, 10);
+    const entryMat = new THREE.MeshLambertMaterial({ color: 0xffcc00, transparent: true, opacity: 0.5 });
+    const entryZone = new THREE.Mesh(entryGeo, entryMat);
+    entryZone.rotation.x = -Math.PI / 2;
+    entryZone.position.set(-35, 0.015, pitLaneZ + 5);
+    scene.add(entryZone);
+    trackObjects.push(entryZone);
+
+    // Guardar posição de entrada
+    pitLaneEntry = new THREE.Vector3(-35, 0, pitLaneZ + 5);
+
+    // Saída do pit (zona verde)
+    const exitGeo = new THREE.PlaneGeometry(15, 10);
+    const exitMat = new THREE.MeshLambertMaterial({ color: 0x44ff44, transparent: true, opacity: 0.5 });
+    const exitZone = new THREE.Mesh(exitGeo, exitMat);
+    exitZone.rotation.x = -Math.PI / 2;
+    exitZone.position.set(35, 0.015, pitLaneZ + 5);
+    scene.add(exitZone);
+    trackObjects.push(exitZone);
+
+    // Guardar posição de saída
+    pitLaneExit = new THREE.Vector3(35, 0, pitLaneZ + 5);
+
+    // Box position (onde para para pit stop)
+    pitBoxPosition = new THREE.Vector3(0, 0, pitLaneZ);
+
+    // Marca do box do jogador (vermelho)
+    const boxMarkGeo = new THREE.PlaneGeometry(6, 6);
+    const boxMarkMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 });
+    const boxMark = new THREE.Mesh(boxMarkGeo, boxMarkMat);
+    boxMark.rotation.x = -Math.PI / 2;
+    boxMark.position.set(0, 0.02, pitLaneZ);
+    scene.add(boxMark);
+    trackObjects.push(boxMark);
+
     // Prédio principal dos boxes
-    const pitGeo = new THREE.BoxGeometry(60, 8, 15);
+    const pitGeo = new THREE.BoxGeometry(70, 8, 12);
     const pitMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const pit = new THREE.Mesh(pitGeo, pitMat);
-    pit.position.set(0, 4, -25);
+    pit.position.set(0, 4, pitLaneZ - 10);
     scene.add(pit);
     trackObjects.push(pit);
 
     // Teto
-    const roofGeo = new THREE.BoxGeometry(65, 1, 20);
+    const roofGeo = new THREE.BoxGeometry(75, 1, 18);
     const roofMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.set(0, 9, -25);
+    roof.position.set(0, 9, pitLaneZ - 8);
     scene.add(roof);
     trackObjects.push(roof);
 
-    // Faixa colorida
-    const stripeGeo = new THREE.BoxGeometry(60, 1, 15.1);
+    // Faixa colorida do time
+    const stripeGeo = new THREE.BoxGeometry(70, 1, 12.1);
     const stripeMat = new THREE.MeshLambertMaterial({ color: accentColor });
     const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-    stripe.position.set(0, 7, -25);
+    stripe.position.set(0, 7, pitLaneZ - 10);
     scene.add(stripe);
     trackObjects.push(stripe);
 
-    // Garagens
-    for (let i = -25; i <= 25; i += 10) {
+    // Garagens individuais
+    for (let i = -30; i <= 30; i += 10) {
         const garageGeo = new THREE.BoxGeometry(8, 5, 0.5);
         const garageMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
         const garage = new THREE.Mesh(garageGeo, garageMat);
-        garage.position.set(i, 2.5, -17.5);
+        garage.position.set(i, 2.5, pitLaneZ - 4);
         scene.add(garage);
         trackObjects.push(garage);
+
+        // Número da garagem
+        if (i === 0) {
+            // Garagem do jogador tem cor especial
+            const playerGarageGeo = new THREE.BoxGeometry(8.2, 5.2, 0.4);
+            const playerGarageMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+            const playerGarage = new THREE.Mesh(playerGarageGeo, playerGarageMat);
+            playerGarage.position.set(i, 2.5, pitLaneZ - 3.8);
+            scene.add(playerGarage);
+            trackObjects.push(playerGarage);
+        }
     }
+
+    // Equipamento de pit stop (simulado)
+    const equipGeo = new THREE.BoxGeometry(1, 1.5, 1);
+    const equipMat = new THREE.MeshLambertMaterial({ color: 0xff6600 });
+    [-2, 2].forEach(x => {
+        const equip = new THREE.Mesh(equipGeo, equipMat);
+        equip.position.set(x, 0.75, pitLaneZ - 2);
+        scene.add(equip);
+        trackObjects.push(equip);
+    });
+
+    // Sinal de PIT
+    const signGeo = new THREE.BoxGeometry(12, 3, 0.5);
+    const signMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.set(-35, 5, pitLaneZ);
+    scene.add(sign);
+    trackObjects.push(sign);
 }
 
 // ============================================
@@ -1120,12 +1210,6 @@ function setupEvents() {
             case 'KeyD':
                 keys.right = true;
                 break;
-            case 'KeyP':
-                // Pit stop
-                if (canEnterPit && !isInPitStop && playerCar && playerCar.userData.damage > 10) {
-                    enterPitStop();
-                }
-                break;
         }
     });
 
@@ -1223,9 +1307,9 @@ function startGame() {
     raceTime = 0;
 
     // Reset pit stop
+    isInPitLane = false;
     isInPitStop = false;
     pitStopTimer = 0;
-    canEnterPit = true;
 
     // Posicionar jogador na largada
     playerCar.position.set(0, 0.5, 0);
@@ -1301,14 +1385,68 @@ function restartGame() {
 // SISTEMA DE PIT STOP
 // ============================================
 
-function enterPitStop() {
+function checkPitLane() {
+    if (!playerCar || !pitLaneEntry || !pitBoxPosition) return;
+
+    const playerPos = playerCar.position;
+    const pitHint = document.getElementById('pitHint');
+
+    // Verificar se está perto da entrada do pit (zona amarela)
+    const distToEntry = playerPos.distanceTo(pitLaneEntry);
+
+    // Mostrar dica quando perto da entrada e com dano
+    if (distToEntry < 15 && playerCar.userData.damage > 10 && !isInPitLane) {
+        if (pitHint) {
+            pitHint.textContent = '🔧 Entre no PIT LANE para reparos!';
+            pitHint.style.display = 'block';
+        }
+    } else if (!isInPitLane && pitHint) {
+        pitHint.style.display = 'none';
+    }
+
+    // Entrar na pit lane
+    if (distToEntry < 8 && !isInPitLane && playerCar.position.z < -10) {
+        enterPitLane();
+    }
+
+    // Se está na pit lane
+    if (isInPitLane) {
+        // Limite de velocidade
+        if (playerSpeed > pitLaneSpeedLimit) {
+            playerSpeed = pitLaneSpeedLimit;
+        }
+
+        // Verificar se está no box
+        const distToBox = playerPos.distanceTo(pitBoxPosition);
+
+        if (distToBox < 5 && Math.abs(playerSpeed) < 5 && !isInPitStop) {
+            // Parou no box - iniciar pit stop
+            startPitStop();
+        }
+
+        // Verificar se saiu pela saída
+        const distToExit = playerPos.distanceTo(pitLaneExit);
+        if (distToExit < 8 && playerPos.z > -15) {
+            exitPitLane();
+        }
+    }
+}
+
+function enterPitLane() {
+    isInPitLane = true;
+
+    const pitHint = document.getElementById('pitHint');
+    if (pitHint) {
+        pitHint.innerHTML = '🔧 PIT LANE - Limite: 60 km/h<br>Pare no box vermelho!';
+        pitHint.style.display = 'block';
+    }
+}
+
+function startPitStop() {
     if (isInPitStop) return;
 
     isInPitStop = true;
     pitStopTimer = 0;
-    canEnterPit = false;
-
-    // Parar o carro
     playerSpeed = 0;
 
     // Mostrar indicador
@@ -1346,7 +1484,6 @@ function updatePitStop(delta) {
         // Restaurar peças visuais do carro
         if (playerCar.userData.damageParts) {
             playerCar.userData.damageParts.forEach(part => {
-                // Restaurar posição original gradualmente
                 part.position.x *= 0.95;
                 part.position.y = Math.abs(part.position.y) < 0.5 ? part.position.y * 0.95 : part.position.y;
                 part.rotation.x *= 0.9;
@@ -1357,15 +1494,13 @@ function updatePitStop(delta) {
 
     // Pit stop concluído
     if (pitStopTimer >= pitStopDuration) {
-        exitPitStop();
+        finishPitStop();
     }
 }
 
-function exitPitStop() {
+function finishPitStop() {
     isInPitStop = false;
     pitStopTimer = 0;
-
-    // Resetar dano completamente
     playerCar.userData.damage = 0;
 
     // Esconder indicador
@@ -1374,11 +1509,21 @@ function exitPitStop() {
     if (indicator) indicator.style.display = 'none';
     if (progressBar) progressBar.style.width = '0%';
 
-    // Cooldown antes de poder fazer outro pit
-    setTimeout(() => {
-        canEnterPit = true;
-    }, 10000); // 10 segundos de cooldown
+    // Mostrar dica para sair
+    const pitHint = document.getElementById('pitHint');
+    if (pitHint) {
+        pitHint.textContent = '✅ Reparos completos! Siga para a saída verde!';
+        pitHint.style.display = 'block';
+    }
 }
+
+function exitPitLane() {
+    isInPitLane = false;
+
+    const pitHint = document.getElementById('pitHint');
+    if (pitHint) pitHint.style.display = 'none';
+}
+
 
 // ============================================
 // ATUALIZAÇÕES DO JOGO
@@ -1387,16 +1532,13 @@ function exitPitStop() {
 function updatePlayer(delta) {
     if (gameState !== 'racing' || playerCar.userData.finished) return;
 
-    // Atualizar pit stop
+    // Verificar pit lane física
+    checkPitLane();
+
+    // Atualizar pit stop se estiver fazendo
     if (isInPitStop) {
         updatePitStop(delta);
         return;
-    }
-
-    // Mostrar dica de pit se dano > 30%
-    const pitHint = document.getElementById('pitHint');
-    if (pitHint) {
-        pitHint.style.display = playerCar.userData.damage > 30 ? 'block' : 'none';
     }
 
     // Atualizar som do motor
